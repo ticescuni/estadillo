@@ -227,6 +227,13 @@
         }
 
         /* ===================== SINOPSIS ===================== */
+        /*
+         * Todas las reglas usan .sin-folio como prefijo para superar
+         * la especificidad del reset de Tailwind CDN (border-width:0,
+         * background overrides, etc.).
+         * print-color-adjust garantiza que los fondos de color se
+         * preserven al imprimir / exportar a PDF.
+         */
         .sin-folio {
             background: white;
             padding: 6mm 8mm;
@@ -235,62 +242,84 @@
             border-radius: 4px;
             font-size: 0.62rem;
             font-family: Arial, Helvetica, sans-serif;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
-        .sin-header-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
-        .sin-header-table td { border: 1px solid #aaa; padding: 2px 4px; vertical-align: middle; }
-        .sin-logo-cell { text-align: center; padding: 2px !important; background: white; }
-        .sin-lbl { background: #dce6f0; font-weight: 700; white-space: nowrap; color: #012e5a; font-size: 0.58rem; text-transform: uppercase; }
-        .sin-val { min-width: 70px; }
-        .sin-hl { font-weight: 700; color: #012e5a; font-size: 0.85rem; }
-        .sin-otras { font-size: 0.58rem; padding: 3px 4px !important; background: #f5f5f0; }
+        /* Base: neutraliza el reset de Tailwind dentro del folio */
+        .sin-folio * {
+            box-sizing: border-box;
+            font-family: Arial, Helvetica, sans-serif;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .sin-folio table {
+            width: 100%;
+            border-collapse: collapse !important;
+        }
+        .sin-folio th,
+        .sin-folio td {
+            border: 1px solid #aaa !important;
+            padding: 2px 3px;
+            vertical-align: middle;
+        }
 
-        .sin-stage { margin-bottom: 6px; }
-        .sin-stage-title { background: #014380; color: white; font-weight: 700; font-size: 0.68rem; padding: 2px 6px; letter-spacing: 0.03em; }
+        /* ── Cabecera del centro ── */
+        .sin-folio .sin-header-table { margin-bottom: 5px; }
+        .sin-folio .sin-logo-cell  { text-align: center; padding: 2px !important; background-color: white !important; }
+        .sin-folio .sin-lbl        { background-color: #dce6f0 !important; font-weight: 700; white-space: nowrap; color: #012e5a; font-size: 0.58rem; text-transform: uppercase; }
+        .sin-folio .sin-val        { min-width: 70px; }
+        .sin-folio .sin-hl         { font-weight: 700; color: #012e5a; font-size: 0.9rem; }
+        .sin-folio .sin-otras      { font-size: 0.58rem; padding: 3px 4px !important; background-color: #f5f5f0 !important; border-top: 2px solid #c5d2e0 !important; }
 
-        .sin-table { width: 100%; border-collapse: collapse; font-size: 0.58rem; }
-        .sin-table th, .sin-table td { border: 1px solid #ccc; padding: 1px 2px; text-align: center; }
-        .sin-th-lv { background: #dce6f0; width: 38px; font-size: 0.55rem; font-weight: 700; }
-        .sin-th-g  { background: #dce9f5; font-size: 0.55rem; font-weight: 700; }
-        .sin-th-gs { background: #b8d4ec; width: 26px; font-weight: 700; }
-        .sin-th-rg { background: #c8e8d8; font-size: 0.55rem; font-weight: 700; }
-        .sin-th-rs { background: #9fd4b8; width: 26px; font-weight: 700; }
-        .sin-th-ag { width: 72px; font-size: 0.5rem; }
-        .sin-th-ud { width: 22px; font-size: 0.52rem; }
-        .sin-th-hr { width: 26px; font-size: 0.52rem; }
-        .sin-th-lt { background: #eef4fb; width: 17px; font-size: 0.52rem; }
-        .sin-th-lr { background: #e8f5ee; width: 17px; font-size: 0.52rem; }
-        .sin-lv  { font-weight: 600; background: #f5f5f2; text-align: left; padding-left: 3px; }
-        .sin-lv-tot { font-weight: 700; background: #dce6f0; text-align: left; padding-left: 3px; }
-        .sin-gs  { font-weight: 700; background: #dce9f5; }
-        .sin-rs  { font-weight: 700; background: #e8f5ee; }
-        .sin-tot-r { background: #ebebeb; }
-        .sin-tot-v { font-size: 0.68rem; font-weight: 700; }
-        .sin-rn  { color: #555; }
-        .sin-rrn { color: #005429; }
-        .sin-ag  { font-size: 0.52rem; text-align: left; padding-left: 2px; }
+        /* ── Título de etapa ── */
+        .sin-stage          { margin-bottom: 5px; }
+        .sin-stage-title    { background-color: #014380 !important; color: white !important; font-weight: 700; font-size: 0.68rem; padding: 3px 6px; letter-spacing: 0.03em; display: block; }
 
-        .sin-prof { margin-top: 6px; font-size: 0.6rem; }
-        .sin-prof-title { font-weight: 700; color: #014380; margin-bottom: 3px; font-size: 0.62rem; text-transform: uppercase; }
-        .sin-prof-table { width: 100%; border-collapse: collapse; }
-        .sin-prof-table th { background: #dce6f0; border: 1px solid #ccc; padding: 2px 4px; font-size: 0.58rem; text-align: left; }
-        .sin-prof-table td { border: 1px solid #ddd; padding: 2px 4px; font-size: 0.58rem; }
+        /* ── Tabla de etapa ── */
+        .sin-folio .sin-table th,
+        .sin-folio .sin-table td  { border: 1px solid #ccc !important; padding: 1px 2px; text-align: center; font-size: 0.58rem; }
+        .sin-folio .sin-th-lv { background-color: #dce6f0 !important; width: 38px; font-size: 0.55rem; font-weight: 700; }
+        .sin-folio .sin-th-g  { background-color: #dce9f5 !important; font-size: 0.55rem; font-weight: 700; }
+        .sin-folio .sin-th-gs { background-color: #b8d4ec !important; width: 26px; font-weight: 700; }
+        .sin-folio .sin-th-rg { background-color: #c8e8d8 !important; font-size: 0.55rem; font-weight: 700; }
+        .sin-folio .sin-th-rs { background-color: #9fd4b8 !important; width: 26px; font-weight: 700; }
+        .sin-folio .sin-th-ag { width: 72px; font-size: 0.5rem; }
+        .sin-folio .sin-th-ud { width: 22px; font-size: 0.52rem; }
+        .sin-folio .sin-th-hr { width: 26px; font-size: 0.52rem; }
+        .sin-folio .sin-th-lt { background-color: #eef4fb !important; width: 17px; font-size: 0.52rem; }
+        .sin-folio .sin-th-lr { background-color: #e8f5ee !important; width: 17px; font-size: 0.52rem; }
+        .sin-folio .sin-lv    { font-weight: 600; background-color: #f5f5f2 !important; text-align: left !important; padding-left: 3px !important; }
+        .sin-folio .sin-lv-tot{ font-weight: 700; background-color: #dce6f0 !important; text-align: left !important; padding-left: 3px !important; }
+        .sin-folio .sin-gs    { font-weight: 700; background-color: #dce9f5 !important; }
+        .sin-folio .sin-rs    { font-weight: 700; background-color: #e8f5ee !important; }
+        .sin-folio .sin-tot-r { background-color: #ebebeb !important; }
+        .sin-folio .sin-tot-v { font-size: 0.7rem; font-weight: 700; }
+        .sin-folio .sin-rn    { color: #444; }
+        .sin-folio .sin-rrn   { color: #005429; }
+        .sin-folio .sin-ag    { font-size: 0.52rem; text-align: left !important; padding-left: 2px !important; }
 
-        /* Print */
+        /* ── Profesorado ── */
+        .sin-prof            { margin-top: 6px; }
+        .sin-prof-title      { font-weight: 700; color: #014380; margin-bottom: 3px; font-size: 0.62rem; text-transform: uppercase; }
+        .sin-folio .sin-prof-table th { background-color: #dce6f0 !important; padding: 2px 4px; font-size: 0.58rem; text-align: left !important; font-weight: 700; }
+        .sin-folio .sin-prof-table td { padding: 2px 4px; font-size: 0.58rem; }
+
+        /* Print / PDF */
         @media print {
-            body { background: white; -webkit-print-color-adjust: exact; }
+            body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .no-print { display: none !important; }
-            /* Por defecto imprime las pestañas normales */
             .tab-content { display: block !important; page-break-before: always; animation: none !important; }
             .tab-content.active { page-break-before: auto; }
             .matrix-container { overflow: visible !important; }
             input, select, textarea { border: none !important; resize: none; box-shadow: none !important; }
             .card, .stat-card, .profesor-card { box-shadow: none; border: 1px solid #ccc; }
-            /* Modo sinopsis: solo imprime los folios */
+            /* Modo sinopsis */
             body.print-sinopsis .tab-content { display: none !important; }
             body.print-sinopsis #tab-sinopsis { display: block !important; page-break-before: auto; }
-            body.print-sinopsis .sin-folio { border: none; margin: 0; padding: 4mm 6mm; page-break-after: always; }
+            body.print-sinopsis .sin-folio    { border: none; margin: 0; padding: 4mm 6mm; page-break-after: always; }
             body.print-sinopsis .sin-folio:last-child { page-break-after: auto; }
             body.print-sinopsis .sin-btn-area { display: none !important; }
+            body.print-sinopsis .sin-folio *  { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             @page { size: A4 landscape; margin: 4mm; }
         }
     </style>
