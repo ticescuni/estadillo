@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
@@ -1294,10 +1295,370 @@
             return { wb, nombre };
         }
 
-        function descargarExcel() {
+        // =============================================
+        // EXPORTACIÓN EXCEL ESTILIZADO (ExcelJS)
+        // =============================================
+        async function generarExcelEstilizado() {
+            const wb = new ExcelJS.Workbook();
+            wb.creator = 'DEE - Arzobispado de Madrid';
+            const v  = id => document.getElementById(id)?.value || '';
+            const ck = id => document.getElementById(id)?.checked ? 'SÍ' : 'NO';
+
+            const C = {
+                azul: '014380', azulD: '012e5a', azulC: 'DCE6F0', azulM: 'B8D4EC',
+                verdeD: '005429', verdeC: 'C8E8D8', verdeM: '9FD4B8',
+                ambarFill: 'FFF8E1', ambarTxt: '7C4A00', ambarMed: 'FFE082',
+                gris: 'F0F4F8', blanco: 'FFFFFF'
+            };
+            const fill  = c => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + c } });
+            const xfont = (bold, size, color) => ({ bold: !!bold, size: size || 9, color: { argb: 'FF' + (color || '000000') }, name: 'Arial' });
+            const thin  = { style: 'thin', color: { argb: 'FFCCCCCC' } };
+            const bord  = { top: thin, left: thin, bottom: thin, right: thin };
+            const ac    = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            const al    = { horizontal: 'left',   vertical: 'middle', wrapText: true };
+
+            // style cell: fill, font, align, border
+            function sc(cell, fillC, bold, size, fColor, align) {
+                if (fillC) cell.fill = fill(fillC);
+                cell.font      = xfont(bold, size, fColor);
+                cell.alignment = align === 'c' ? ac : al;
+                cell.border    = bord;
+            }
+
+            // ── HOJA SINOPSIS ─────────────────────────────────────
+            const ws = wb.addWorksheet('SINOPSIS');
+            ws.columns = [
+                { width: 13 },
+                ...Array(10).fill(null).map(() => ({ width: 4.5 })),  // B-K: T grupos
+                { width: 8 },                                           // L: total T
+                ...Array(10).fill(null).map(() => ({ width: 4.5 })),  // M-V: R grupos
+                { width: 8 },                                           // W: total R
+                { width: 22 },                                          // X: agrupamientos
+                { width: 9 },                                           // Y: unidades
+                { width: 9 },                                           // Z: horas
+            ];
+
+            let r = 1;
+
+            // Título
+            ws.mergeCells(`A${r}:Z${r}`);
+            const tc = ws.getCell(`A${r}`);
+            tc.value = 'DELEGACIÓN EPISCOPAL DE ENSEÑANZA — ARZOBISPADO DE MADRID';
+            tc.fill = fill(C.azul); tc.font = xfont(true, 13, C.blanco); tc.alignment = ac;
+            ws.getRow(r).height = 24; r++;
+
+            // Filas de datos del centro
+            // infoRow: pairs = [label, val, lw (label width in cols), vw (value width in cols)]
+            function infoRow(pairs, height) {
+                let col = 1;
+                pairs.forEach(([label, val, lw, vw]) => {
+                    if (lw > 0) {
+                        const c1 = String.fromCharCode(64 + col);
+                        const c2 = String.fromCharCode(64 + col + lw - 1);
+                        if (lw > 1) ws.mergeCells(`${c1}${r}:${c2}${r}`);
+                        const lc = ws.getCell(`${c1}${r}`);
+                        lc.value = label;
+                        sc(lc, C.azulC, true, 8, C.azulD, 'c');
+                        col += lw;
+                    }
+                    const v1 = String.fromCharCode(64 + col);
+                    const v2 = String.fromCharCode(64 + col + vw - 1);
+                    if (vw > 1) ws.mergeCells(`${v1}${r}:${v2}${r}`);
+                    const vc = ws.getCell(`${v1}${r}`);
+                    vc.value = val;
+                    sc(vc, null, false, 9, null, 'l');
+                    col += vw;
+                });
+                ws.getRow(r).height = height || 15; r++;
+            }
+
+            // Vicaría | Curso | Tipo | Código
+            infoRow([
+                ['VICARÍA', v('vicaria'), 2, 2],
+                ['CURSO', v('curso'), 2, 4],
+                ['TIPO DE CENTRO', v('tipo-centro'), 3, 5],
+                ['CÓDIGO OFICIAL', v('codigo-oficial'), 3, 5],
+            ], 18);
+            // Centro
+            infoRow([['CENTRO EDUCATIVO', v('nombre-centro'), 3, 23]], 18);
+            // Dirección
+            infoRow([
+                ['DIRECCIÓN', v('direccion'), 1, 10],
+                ['C.P.', v('cp'), 2, 3],
+                ['MUNICIPIO', v('municipio'), 2, 8],
+            ], 15);
+            // Teléfono / Email
+            infoRow([
+                ['TELÉFONOS', v('telefono'), 1, 10],
+                ['E-MAIL', v('email'), 2, 13],
+            ], 15);
+            // Director / Inspector / Fecha
+            infoRow([
+                ['DIRECTOR/A', v('director'), 1, 10],
+                ['INSPECTOR/A', v('inspector'), 2, 7],
+                ['FECHA', v('fecha'), 2, 4],
+            ], 15);
+
+            // Otras religiones
+            ws.mergeCells(`A${r}:Z${r}`);
+            const orC = ws.getCell(`A${r}`);
+            orC.value = `Otras religiones: Islámica: ${ck('check-islamica')}  |  Evangélica: ${ck('check-evangelica')}`;
+            sc(orC, 'F5F5F0', false, 8, '333333', 'l');
+            ws.getRow(r).height = 13; r++;
+
+            // Docentes
+            const profsList = [];
+            document.querySelectorAll('#lista-profesores [data-profesor]').forEach(card => {
+                const ins = card.querySelectorAll('input');
+                if (ins.length >= 3 && (ins[0].value || ins[1].value))
+                    profsList.push(`${ins[0].value} ${ins[1].value}${ins[2].value ? ' ('+ins[2].value+')' : ''}`);
+            });
+            ws.mergeCells(`A${r}:Z${r}`);
+            const docC = ws.getCell(`A${r}`);
+            docC.value = `Docentes de Religión Católica: ${profsList.join(' · ') || '—'}`;
+            sc(docC, 'F5F5F0', false, 8, '333333', 'l');
+            ws.getRow(r).height = 13; r++;
+
+            ws.getRow(r).height = 5; r++; // separador
+
+            // ── ETAPAS ──────────────────────────────────────────
+            function addStage(stageKey) {
+                const cfg = STAGES[stageKey];
+
+                // Título etapa
+                ws.mergeCells(`A${r}:Z${r}`);
+                const st = ws.getCell(`A${r}`);
+                st.value = cfg.title.toUpperCase();
+                st.fill = fill(C.azul); st.font = xfont(true, 11, C.blanco); st.alignment = ac;
+                ws.getRow(r).height = 18; r++;
+
+                const h1 = r, h2 = r + 1;
+
+                // Cabecera fila 1 (merged con fila 2 para NIVEL, TOT, REL, AGRUP, UDS, HORAS)
+                ws.mergeCells(`A${h1}:A${h2}`);
+                sc(ws.getCell(`A${h1}`), C.azulC, true, 8, C.azulD, 'c');
+                ws.getCell(`A${h1}`).value = 'NIVEL';
+
+                ws.mergeCells(`B${h1}:K${h1}`);
+                sc(ws.getCell(`B${h1}`), C.azulC, true, 8, C.azulD, 'c');
+                ws.getCell(`B${h1}`).value = 'TOTAL ALUMNOS POR GRUPO';
+
+                ws.mergeCells(`L${h1}:L${h2}`);
+                sc(ws.getCell(`L${h1}`), C.azulM, true, 8, C.azulD, 'c');
+                ws.getCell(`L${h1}`).value = 'TOT.\nALUM.';
+
+                ws.mergeCells(`M${h1}:V${h1}`);
+                sc(ws.getCell(`M${h1}`), C.verdeC, true, 8, C.verdeD, 'c');
+                ws.getCell(`M${h1}`).value = 'ALUMNOS RELIGIÓN POR GRUPO';
+
+                ws.mergeCells(`W${h1}:W${h2}`);
+                sc(ws.getCell(`W${h1}`), C.verdeM, true, 8, C.verdeD, 'c');
+                ws.getCell(`W${h1}`).value = 'TOT.\nREL.';
+
+                ws.mergeCells(`X${h1}:X${h2}`);
+                sc(ws.getCell(`X${h1}`), C.gris, true, 8, '374151', 'c');
+                ws.getCell(`X${h1}`).value = 'SI HAY AGRUPAMIENTOS\nINDÍQUELOS';
+
+                ws.mergeCells(`Y${h1}:Y${h2}`);
+                sc(ws.getCell(`Y${h1}`), C.ambarFill, true, 8, C.ambarTxt, 'c');
+                ws.getCell(`Y${h1}`).value = 'TOTAL\nUNIDS.';
+
+                ws.mergeCells(`Z${h1}:Z${h2}`);
+                sc(ws.getCell(`Z${h1}`), C.ambarFill, true, 8, C.ambarTxt, 'c');
+                ws.getCell(`Z${h1}`).value = 'HORAS\nSEM.';
+
+                ws.getRow(h1).height = 28; r++;
+
+                // Cabecera fila 2: letras de grupo
+                GRUPOS.forEach((g, i) => {
+                    const c = ws.getCell(`${String.fromCharCode(66 + i)}${h2}`);
+                    c.value = g; sc(c, C.azulC, true, 8, C.azulD, 'c');
+                });
+                GRUPOS.forEach((g, i) => {
+                    const c = ws.getCell(`${String.fromCharCode(77 + i)}${h2}`);
+                    c.value = g; sc(c, C.verdeC, true, 8, C.verdeD, 'c');
+                });
+                ws.getRow(h2).height = 14; r++;
+
+                let sumT = 0, sumR = 0, sumU = 0, sumH = 0;
+
+                // Filas de datos
+                cfg.levels.forEach((lvl, idx) => {
+                    const base = `${stageKey}-${idx}`;
+                    const rowFill = idx % 2 === 0 ? 'F8F9FB' : null;
+                    let rT = 0, rR = 0;
+
+                    ws.getCell(`A${r}`).value = lvl;
+                    sc(ws.getCell(`A${r}`), rowFill || 'F0F2F5', true, 9, '374151', 'l');
+
+                    GRUPOS.forEach((g, i) => {
+                        const tv = getVal(`${base}-T-${g}`);
+                        const cell = ws.getCell(`${String.fromCharCode(66 + i)}${r}`);
+                        cell.value = tv || null;
+                        sc(cell, rowFill, false, 9, '2D4A6E', 'c');
+                        rT += tv;
+                    });
+                    ws.getCell(`L${r}`).value = rT || null;
+                    sc(ws.getCell(`L${r}`), 'D8E8F8', true, 10, C.azulD, 'c');
+
+                    GRUPOS.forEach((g, i) => {
+                        const rv = getVal(`${base}-R-${g}`);
+                        const cell = ws.getCell(`${String.fromCharCode(77 + i)}${r}`);
+                        cell.value = rv || null;
+                        sc(cell, rowFill, false, 9, C.verdeD, 'c');
+                        rR += rv;
+                    });
+                    ws.getCell(`W${r}`).value = rR || null;
+                    sc(ws.getCell(`W${r}`), 'C8E8D8', true, 10, C.verdeD, 'c');
+
+                    const ag    = document.getElementById(`${base}-agrup`)?.value || '';
+                    const ud    = getVal(`${base}-uds`);
+                    const hrVal = document.getElementById(`${base}-horas`)?.value || '';
+                    const hrN   = parseFloat(String(hrVal).replace(',', '.')) || 0;
+
+                    ws.getCell(`X${r}`).value = ag || null;
+                    sc(ws.getCell(`X${r}`), rowFill, false, 8, '374151', 'l');
+                    ws.getCell(`Y${r}`).value = ud || null;
+                    sc(ws.getCell(`Y${r}`), C.ambarFill, !!ud, 9, C.ambarTxt, 'c');
+                    ws.getCell(`Z${r}`).value = hrVal || null;
+                    sc(ws.getCell(`Z${r}`), C.ambarFill, !!hrVal, 9, C.ambarTxt, 'c');
+
+                    ws.getRow(r).height = 16;
+                    sumT += rT; sumR += rR; sumU += ud; sumH += hrN;
+                    r++;
+                });
+
+                // Fila TOTAL
+                ws.getCell(`A${r}`).value = 'TOTAL';
+                sc(ws.getCell(`A${r}`), C.azulC, true, 9, C.azulD, 'l');
+                for (let i = 0; i < 10; i++) {
+                    ws.getCell(`${String.fromCharCode(66 + i)}${r}`).fill = fill('E8EEF6');
+                    ws.getCell(`${String.fromCharCode(66 + i)}${r}`).border = bord;
+                }
+                ws.getCell(`L${r}`).value = sumT;
+                sc(ws.getCell(`L${r}`), C.azulM, true, 12, C.azulD, 'c');
+                for (let i = 0; i < 10; i++) {
+                    ws.getCell(`${String.fromCharCode(77 + i)}${r}`).fill = fill('E0F5EA');
+                    ws.getCell(`${String.fromCharCode(77 + i)}${r}`).border = bord;
+                }
+                ws.getCell(`W${r}`).value = sumR;
+                sc(ws.getCell(`W${r}`), C.verdeM, true, 12, C.verdeD, 'c');
+                ws.getCell(`X${r}`).fill = fill(C.gris); ws.getCell(`X${r}`).border = bord;
+                ws.getCell(`Y${r}`).value = sumU || null;
+                sc(ws.getCell(`Y${r}`), C.ambarMed, true, 12, C.ambarTxt, 'c');
+                ws.getCell(`Z${r}`).value = sumH ? sumH.toFixed(2).replace('.', ',') : null;
+                sc(ws.getCell(`Z${r}`), C.ambarMed, true, 12, C.ambarTxt, 'c');
+                ws.getRow(r).height = 20; r++;
+
+                ws.getRow(r).height = 6; r++; // separador
+            }
+
+            Object.keys(STAGES).forEach(stageKey => addStage(stageKey));
+
+            // ── PROFESORADO ──────────────────────────────────────
+            ws.mergeCells(`A${r}:Z${r}`);
+            const pt = ws.getCell(`A${r}`);
+            pt.value = 'PROFESORADO DE RELIGIÓN CATÓLICA';
+            pt.fill = fill(C.azul); pt.font = xfont(true, 11, C.blanco); pt.alignment = ac;
+            ws.getRow(r).height = 18; r++;
+
+            ws.mergeCells(`A${r}:I${r}`);
+            sc(ws.getCell(`A${r}`), C.azulC, true, 9, C.azulD, 'l');
+            ws.getCell(`A${r}`).value = 'NOMBRE';
+            ws.mergeCells(`J${r}:R${r}`);
+            sc(ws.getCell(`J${r}`), C.azulC, true, 9, C.azulD, 'l');
+            ws.getCell(`J${r}`).value = 'APELLIDOS';
+            ws.mergeCells(`S${r}:Z${r}`);
+            sc(ws.getCell(`S${r}`), C.azulC, true, 9, C.azulD, 'l');
+            ws.getCell(`S${r}`).value = 'NIVELES QUE IMPARTE';
+            ws.getRow(r).height = 16; r++;
+
+            let profCount = 0;
+            document.querySelectorAll('#lista-profesores [data-profesor]').forEach(card => {
+                const ins = card.querySelectorAll('input');
+                if (ins.length >= 3) {
+                    ws.mergeCells(`A${r}:I${r}`);
+                    ws.getCell(`A${r}`).value = ins[0].value;
+                    sc(ws.getCell(`A${r}`), null, false, 9, null, 'l');
+                    ws.mergeCells(`J${r}:R${r}`);
+                    ws.getCell(`J${r}`).value = ins[1].value;
+                    sc(ws.getCell(`J${r}`), null, false, 9, null, 'l');
+                    ws.mergeCells(`S${r}:Z${r}`);
+                    ws.getCell(`S${r}`).value = ins[2].value;
+                    sc(ws.getCell(`S${r}`), null, false, 9, null, 'l');
+                    ws.getRow(r).height = 14; r++;
+                    profCount++;
+                }
+            });
+            if (!profCount) {
+                ws.mergeCells(`A${r}:Z${r}`);
+                ws.getCell(`A${r}`).value = '—';
+                sc(ws.getCell(`A${r}`), null, false, 9, null, 'c');
+                ws.getRow(r).height = 14; r++;
+            }
+
+            // ── OBSERVACIONES ────────────────────────────────────
+            const obs = v('obs-generales');
+            if (obs) {
+                ws.getRow(r).height = 5; r++;
+                ws.mergeCells(`A${r}:Z${r}`);
+                sc(ws.getCell(`A${r}`), C.azulC, true, 9, C.azulD, 'l');
+                ws.getCell(`A${r}`).value = 'OBSERVACIONES';
+                ws.getRow(r).height = 14; r++;
+                ws.mergeCells(`A${r}:Z${r + 2}`);
+                ws.getCell(`A${r}`).value = obs;
+                ws.getCell(`A${r}`).font  = xfont(false, 9);
+                ws.getCell(`A${r}`).alignment = { ...al, wrapText: true };
+                ws.getCell(`A${r}`).border = bord;
+                ws.getRow(r).height = 50; r += 3;
+            }
+
+            // ── HOJA RESUMEN ─────────────────────────────────────
+            const ws2 = wb.addWorksheet('RESUMEN');
+            const resH = [
+                'VICARÍA', 'TIPO DE CENTRO', 'NOMBRE CENTRO', 'CÓDIGO OFICIAL',
+                'INFANTIL - Total Alumnado', 'INFANTIL - Alumnos Religión', 'INFANTIL - Unidades', 'INFANTIL - Horas',
+                'PRIMARIA - Total Alumnado', 'PRIMARIA - Alumnos Religión', 'PRIMARIA - Unidades', 'PRIMARIA - Horas',
+                'ESO - Total Alumnado', 'ESO - Alumnos Religión', 'ESO - Unidades', 'ESO - Horas',
+                'BACHILLERATO - Total Alumnado', 'BACHILLERATO - Alumnos Religión', 'BACHILLERATO - Unidades', 'BACHILLERATO - Horas'
+            ];
+            ws2.columns = resH.map(() => ({ width: 20 }));
+            const hdrRow = ws2.addRow(resH);
+            hdrRow.height = 30;
+            hdrRow.eachCell(cell => {
+                cell.fill = fill(C.azul); cell.font = xfont(true, 9, C.blanco);
+                cell.alignment = ac; cell.border = bord;
+            });
+            const resData = [v('vicaria'), v('tipo-centro'), v('nombre-centro'), v('codigo-oficial')];
+            Object.keys(STAGES).forEach(key => {
+                let sT = 0, sR = 0, sU = 0, sH = 0;
+                STAGES[key].levels.forEach((_, idx) => {
+                    const base = `${key}-${idx}`;
+                    GRUPOS.forEach(g => { sT += getVal(`${base}-T-${g}`); sR += getVal(`${base}-R-${g}`); });
+                    sU += getVal(`${base}-uds`);
+                    sH += parseFloat(String(document.getElementById(`${base}-horas`)?.value || '0').replace(',', '.')) || 0;
+                });
+                resData.push(sT, sR, sU, parseFloat(sH.toFixed(2)));
+            });
+            const dRow = ws2.addRow(resData);
+            dRow.height = 20;
+            dRow.eachCell(cell => { cell.alignment = ac; cell.border = bord; });
+
+            return wb;
+        }
+
+        async function descargarExcel() {
             try {
-                const { wb, nombre } = generarWorkbook();
-                XLSX.writeFile(wb, `${nombre}.xlsx`);
+                const nombre = getNombreArchivo();
+                const wb     = await generarExcelEstilizado();
+                const buffer = await wb.xlsx.writeBuffer();
+                const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url    = URL.createObjectURL(blob);
+                const a      = document.createElement('a');
+                a.href = url; a.download = `${nombre}.xlsx`;
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
             } catch (e) {
                 alert("Error al generar el Excel: " + e.message);
             }
@@ -1324,8 +1685,12 @@
                 const nombre = getNombreArchivo();
 
                 // ── 1. Enviar Excel ───────────────────────────────
-                const { wb } = generarWorkbook();
-                const xlsBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+                const xlsWb     = await generarExcelEstilizado();
+                const xlsBuffer = await xlsWb.xlsx.writeBuffer();
+                const xlsU8     = new Uint8Array(xlsBuffer);
+                let xlsBin = '';
+                xlsU8.forEach(b => xlsBin += String.fromCharCode(b));
+                const xlsBase64 = btoa(xlsBin);
                 const resXls = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST', redirect: 'follow',
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -1361,7 +1726,7 @@
                 const dataHtml = await resHtml.json();
                 if (dataHtml.status !== 'success') throw new Error('Error en script (HTML): ' + dataHtml.message);
 
-                alert('✓ Enviado correctamente.\n\nSe han guardado en Drive:\n• ' + nombre + '.xlsx\n• ' + nombre + '.html');
+                alert('Enviado');
 
             } catch (e) {
                 console.error(e);
