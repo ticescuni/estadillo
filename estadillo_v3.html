@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadillo Centros Públicos - Gestión</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        corporate: {
+                            blue: '#014380',
+                            blueDark: '#012e5a',
+                            blueLight: '#0261b5',
+                            light: '#96a5c6',
+                            green: '#005429',
+                            greenLight: '#e8f5ee',
+                            surface: '#f5f5f4',
+                            border: '#e2e6ed',
+                        }
+                    },
+                    fontSize: {
+                        'xxs': '0.65rem',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header gradient */
+        .header-gradient {
+            background: linear-gradient(135deg, #f8f7f5 0%, #ffffff 100%);
+            border-bottom: 1px solid #e2e6ed;
+        }
+
+        /* Tabs */
+        .tab-btn {
+            position: relative;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            background: rgba(1, 67, 128, 0.12) !important;
+            color: #014380 !important;
+            box-shadow: inset 0 0 0 1px rgba(1, 67, 128, 0.2);
+        }
+        .tab-btn:not(.active):hover {
+            background: rgba(1, 67, 128, 0.06);
+            color: #014380;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 0.75rem;
+            border: 1px solid #e2e6ed;
+            box-shadow: 0 1px 3px rgba(1, 67, 128, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+            transition: box-shadow 0.2s ease;
+        }
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(1, 67, 128, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Section headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #014380;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #e2e6ed;
+        }
+        .section-header::before {
+            content: '';
+            width: 4px;
+            height: 1.25rem;
+            background: #014380;
+            border-radius: 2px;
+        }
+
+        /* Inputs */
+        .form-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            background: white;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #014380;
+            box-shadow: 0 0 0 3px rgba(1, 67, 128, 0.1);
+        }
+        .form-input::placeholder {
+            color: #9ca3af;
+        }
+
+        /* Matrix table */
+        .matrix-table input {
+            text-align: center;
+            width: 100%;
+            background: transparent;
+            outline: none;
+            font-size: 0.8rem;
+            padding: 2px;
+            border-radius: 3px;
+            transition: background 0.15s;
+        }
+        .matrix-table input:focus {
+            background: #eff6ff;
+            font-weight: 600;
+            box-shadow: inset 0 0 0 1.5px #014380;
+        }
+        .matrix-table th,
+        .matrix-table td {
+            border: 1px solid #e2e6ed;
+            padding: 4px;
+        }
+        .matrix-table thead th {
+            font-size: 0.7rem;
+            letter-spacing: 0.02em;
+        }
+
+        /* Validation */
+        .input-warning {
+            background-color: #fef2f2 !important;
+            box-shadow: inset 0 0 0 2px #f87171 !important;
+            border-radius: 3px;
+        }
+
+        /* Custom scrollbar */
+        .overflow-x-auto::-webkit-scrollbar { height: 6px; }
+        .overflow-x-auto::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
+        .overflow-x-auto::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+        .overflow-x-auto::-webkit-scrollbar-thumb:hover { background: #014380; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+            cursor: pointer;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary {
+            background: linear-gradient(135deg, #15803d, #16a34a);
+            color: white;
+            box-shadow: 0 1px 3px rgba(21, 128, 61, 0.3);
+        }
+        .btn-primary:hover { box-shadow: 0 4px 12px rgba(21, 128, 61, 0.35); filter: brightness(1.05); }
+        .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+        .btn-secondary {
+            background: white;
+            color: #014380;
+            border-color: #d1d5db;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        .btn-secondary:hover { background: #f8f9fb; border-color: #014380; }
+        .btn-danger {
+            background: #fee2e2;
+            color: #dc2626;
+            border-color: #fecaca;
+        }
+        .btn-danger:hover { background: #fecaca; border-color: #f87171; }
+
+        /* Professor card */
+        .profesor-card {
+            border: 1px solid #e2e6ed;
+            border-left: 4px solid #014380;
+            padding: 1rem 1.25rem;
+            border-radius: 0.5rem;
+            background: #fafbfc;
+            position: relative;
+            transition: border-left-color 0.2s;
+        }
+        .profesor-card:hover { border-left-color: #0261b5; background: white; }
+
+        /* Resumen stat cards */
+        .stat-card {
+            background: white;
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            border: 1px solid #e2e6ed;
+            border-left: 4px solid #014380;
+            box-shadow: 0 1px 3px rgba(1, 67, 128, 0.04);
+        }
+        .stat-card .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        /* ===================== SINOPSIS ===================== */
+        .sin-folio {
+            background: white;
+            padding: 6mm 8mm;
+            margin-bottom: 24px;
+            border: 1px solid #c5d2e0;
+            border-radius: 4px;
+            font-size: 0.62rem;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .sin-header-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+        .sin-header-table td { border: 1px solid #aaa; padding: 2px 4px; vertical-align: middle; }
+        .sin-logo-cell { text-align: center; padding: 2px !important; background: white; }
+        .sin-lbl { background: #dce6f0; font-weight: 700; white-space: nowrap; color: #012e5a; font-size: 0.58rem; text-transform: uppercase; }
+        .sin-val { min-width: 70px; }
+        .sin-hl { font-weight: 700; color: #012e5a; font-size: 0.85rem; }
+        .sin-otras { font-size: 0.58rem; padding: 3px 4px !important; background: #f5f5f0; }
+
+        .sin-stage { margin-bottom: 6px; }
+        .sin-stage-title { background: #014380; color: white; font-weight: 700; font-size: 0.68rem; padding: 2px 6px; letter-spacing: 0.03em; }
+
+        .sin-table { width: 100%; border-collapse: collapse; font-size: 0.58rem; }
+        .sin-table th, .sin-table td { border: 1px solid #ccc; padding: 1px 2px; text-align: center; }
+        .sin-th-lv { background: #dce6f0; width: 38px; font-size: 0.55rem; font-weight: 700; }
+        .sin-th-g  { background: #dce9f5; font-size: 0.55rem; font-weight: 700; }
+        .sin-th-gs { background: #b8d4ec; width: 26px; font-weight: 700; }
+        .sin-th-rg { background: #c8e8d8; font-size: 0.55rem; font-weight: 700; }
+        .sin-th-rs { background: #9fd4b8; width: 26px; font-weight: 700; }
+        .sin-th-ag { width: 72px; font-size: 0.5rem; }
+        .sin-th-ud { width: 22px; font-size: 0.52rem; }
+        .sin-th-hr { width: 26px; font-size: 0.52rem; }
+        .sin-th-lt { background: #eef4fb; width: 17px; font-size: 0.52rem; }
+        .sin-th-lr { background: #e8f5ee; width: 17px; font-size: 0.52rem; }
+        .sin-lv  { font-weight: 600; background: #f5f5f2; text-align: left; padding-left: 3px; }
+        .sin-lv-tot { font-weight: 700; background: #dce6f0; text-align: left; padding-left: 3px; }
+        .sin-gs  { font-weight: 700; background: #dce9f5; }
+        .sin-rs  { font-weight: 700; background: #e8f5ee; }
+        .sin-tot-r { background: #ebebeb; }
+        .sin-tot-v { font-size: 0.68rem; font-weight: 700; }
+        .sin-rn  { color: #555; }
+        .sin-rrn { color: #005429; }
+        .sin-ag  { font-size: 0.52rem; text-align: left; padding-left: 2px; }
+
+        .sin-prof { margin-top: 6px; font-size: 0.6rem; }
+        .sin-prof-title { font-weight: 700; color: #014380; margin-bottom: 3px; font-size: 0.62rem; text-transform: uppercase; }
+        .sin-prof-table { width: 100%; border-collapse: collapse; }
+        .sin-prof-table th { background: #dce6f0; border: 1px solid #ccc; padding: 2px 4px; font-size: 0.58rem; text-align: left; }
+        .sin-prof-table td { border: 1px solid #ddd; padding: 2px 4px; font-size: 0.58rem; }
+
+        /* Print */
+        @media print {
+            body { background: white; -webkit-print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            /* Por defecto imprime las pestañas normales */
+            .tab-content { display: block !important; page-break-before: always; animation: none !important; }
+            .tab-content.active { page-break-before: auto; }
+            .matrix-container { overflow: visible !important; }
+            input, select, textarea { border: none !important; resize: none; box-shadow: none !important; }
+            .card, .stat-card, .profesor-card { box-shadow: none; border: 1px solid #ccc; }
+            /* Modo sinopsis: solo imprime los folios */
+            body.print-sinopsis .tab-content { display: none !important; }
+            body.print-sinopsis #tab-sinopsis { display: block !important; page-break-before: auto; }
+            body.print-sinopsis .sin-folio { border: none; margin: 0; padding: 4mm 6mm; page-break-after: always; }
+            body.print-sinopsis .sin-folio:last-child { page-break-after: auto; }
+            body.print-sinopsis .sin-btn-area { display: none !important; }
+            @page { size: A4 landscape; margin: 4mm; }
+        }
+    </style>
+</head>
+
+<body class="bg-corporate-surface text-gray-800 font-sans min-h-screen pb-20">
+
+    <!-- Encabezado Principal -->
+    <header class="header-gradient shadow-sm sticky top-0 z-50 no-print">
+        <div class="max-w-[95%] mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="flex flex-col justify-center">
+                    <!-- Logo: incluye el nombre del Arzobispado y la Delegación -->
+                    <img src="https://raw.githubusercontent.com/ia-esc/estadillo/master/logo_DEEALVARO.jpg" alt="Delegación Episcopal de Enseñanza" class="h-12 w-auto object-contain">
+                </div>
+            </div>
+            <div class="flex gap-2 items-center">
+                <button onclick="guardarEnNube()" id="btn-cloud" class="btn btn-primary px-5">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                    <span>Enviar</span>
+                </button>
+                <button onclick="descargarHTML()" class="btn btn-secondary text-corporate-blue" title="Descargar este formulario como archivo HTML con los datos incluidos">
+                    <i data-lucide="file-down" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">HTML</span>
+                </button>
+                <button onclick="descargarExcel()" class="btn btn-secondary text-corporate-blue">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Excel</span>
+                </button>
+                <div class="w-px h-8 bg-gray-200 mx-1"></div>
+                <button onclick="limpiarFormulario()"
+                    class="btn bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-600 border-gray-200 hover:border-red-300 px-3"
+                    title="Borrar todos los datos">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-[95%] mx-auto px-2 py-6">
+
+        <!-- Navegación por Pestañas -->
+        <nav class="flex flex-wrap items-center gap-1 mb-6 no-print bg-white p-1.5 rounded-xl shadow-sm border border-corporate-border">
+            <button onclick="switchTab('datos')" id="btn-datos"
+                class="tab-btn active flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm">
+                <i data-lucide="file-text" class="w-4 h-4"></i> Datos Generales
+            </button>
+
+            <div class="h-6 w-px bg-gray-200 mx-1"></div>
+
+            <button onclick="switchTab('infantil')" id="btn-infantil"
+                class="tab-btn text-gray-500 flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm">
+                <i data-lucide="baby" class="w-4 h-4"></i> Infantil
+            </button>
+            <button onclick="switchTab('primaria')" id="btn-primaria"
+                class="tab-btn text-gray-500 flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm">
+                <i data-lucide="book-open" class="w-4 h-4"></i> Primaria
+            </button>
+            <button onclick="switchTab('eso')" id="btn-eso"
+                class="tab-btn text-gray-500 flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm">
+                <i data-lucide="graduation-cap" class="w-4 h-4"></i> ESO
+            </button>
+            <button onclick="switchTab('bach')" id="btn-bach"
+                class="tab-btn text-gray-500 flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm">
+                <i data-lucide="library" class="w-4 h-4"></i> Bachillerato
+            </button>
+
+            <div class="h-6 w-px bg-gray-200 mx-1"></div>
+
+            <button onclick="switchTab('profesorado')" id="btn-profesorado"
+                class="tab-btn text-gray-500 flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm">
+                <i data-lucide="users" class="w-4 h-4"></i> Profesorado
+            </button>
+            <button onclick="switchTab('resumen')" id="btn-resumen"
+                class="tab-btn text-gray-500 flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm">
+                <i data-lucide="clipboard-list" class="w-4 h-4"></i> Resumen
+            </button>
+
+        </nav>
+
+        <!-- DATOS GENERALES -->
+        <div id="tab-datos" class="tab-content active space-y-6">
+            <div class="card p-6">
+                <h2 class="section-header">Identificación del Centro</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div class="space-y-1.5">
+                        <label for="codigo-oficial" class="text-xs font-semibold text-corporate-blue uppercase tracking-wide">Codigo Oficial (*)</label>
+                        <input type="text" id="codigo-oficial" class="form-input bg-blue-50/50 uppercase font-semibold">
+                    </div>
+                    <div class="md:col-span-2 space-y-1.5">
+                        <label for="nombre-centro" class="text-xs font-semibold text-corporate-blue uppercase tracking-wide">Nombre del Centro</label>
+                        <input type="text" id="nombre-centro" class="form-input">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label for="vicaria" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vicaría</label>
+                        <select id="vicaria" class="form-input">
+                            <option value="">- Seleccionar -</option>
+                            <option>1</option><option>2</option><option>3</option><option>4</option>
+                            <option>5</option><option>6</option><option>7</option><option>8</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label for="tipo-centro" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tipo de Centro</label>
+                        <input type="text" id="tipo-centro" class="form-input" placeholder="(CEIP / CEIPSO / IES...)">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label for="curso" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Curso</label>
+                        <input type="text" id="curso" class="form-input" placeholder="Ej: 2024-2025">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ubicación y Contacto -->
+            <div class="card p-6">
+                <h2 class="section-header">Ubicación y Contacto</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2 space-y-1.5">
+                        <label for="direccion" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Dirección</label>
+                        <input type="text" id="direccion" class="form-input">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label for="cp" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">CP</label>
+                        <input type="text" id="cp" class="form-input">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label for="municipio" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Municipio</label>
+                        <input type="text" id="municipio" class="form-input">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label for="telefono" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Teléfono/s</label>
+                        <input type="tel" id="telefono" class="form-input">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label for="email" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">E-MAIL</label>
+                        <input type="email" id="email" class="form-input">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label for="director" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Director/a</label>
+                        <input type="text" id="director" class="form-input">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label for="inspector" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Inspector/a</label>
+                        <input type="text" id="inspector" class="form-input">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label for="fecha" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Fecha</label>
+                        <input type="date" id="fecha" class="form-input">
+                    </div>
+
+                    <div class="md:col-span-3 bg-slate-50 p-4 rounded-lg border border-corporate-border">
+                        <label class="text-xs font-semibold text-corporate-blue uppercase tracking-wide block mb-3">Otras religiones con docencia en el centro</label>
+                        <div class="flex gap-6">
+                            <label for="check-islamica"
+                                class="flex items-center gap-2.5 cursor-pointer hover:bg-white p-2.5 rounded-lg transition-colors">
+                                <input type="checkbox" id="check-islamica"
+                                    class="w-5 h-5 rounded border-gray-300 text-corporate-blue focus:ring-corporate-blue focus:ring-offset-0">
+                                <span class="text-sm font-medium text-gray-700">Religión Islámica</span>
+                            </label>
+                            <label for="check-evangelica"
+                                class="flex items-center gap-2.5 cursor-pointer hover:bg-white p-2.5 rounded-lg transition-colors">
+                                <input type="checkbox" id="check-evangelica"
+                                    class="w-5 h-5 rounded border-gray-300 text-corporate-blue focus:ring-corporate-blue focus:ring-offset-0">
+                                <span class="text-sm font-medium text-gray-700">Religión Evangélica</span>
+                            </label>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIONES MATRICIALES -->
+        <div id="tab-infantil" class="tab-content space-y-8"><div id="matrix-infantil"></div></div>
+        <div id="tab-primaria" class="tab-content space-y-8"><div id="matrix-primaria"></div></div>
+        <div id="tab-eso" class="tab-content space-y-8"><div id="matrix-eso"></div></div>
+        <div id="tab-bach" class="tab-content space-y-8"><div id="matrix-bach"></div></div>
+
+        <!-- SINOPSIS -->
+        <div id="tab-sinopsis" class="tab-content">
+            <div class="sin-btn-area no-print flex gap-3 mb-4">
+                <button onclick="imprimirSinopsis()" class="btn btn-primary">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Imprimir Sinopsis (2 folios A4 apaisado)
+                </button>
+                <p class="text-xs text-gray-500 self-center">Folio 1: Infantil + Primaria &nbsp;·&nbsp; Folio 2: ESO + Bachillerato + Profesorado</p>
+            </div>
+            <div id="sinopsis-content"></div>
+        </div>
+
+        <!-- PROFESORADO -->
+        <div id="tab-profesorado" class="tab-content">
+            <div class="card p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="section-header mb-0 border-0 pb-0">Equipo Docente</h2>
+                    <button onclick="addProfesor()"
+                        class="btn btn-secondary text-sm">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                        Añadir Docente
+                    </button>
+                </div>
+                <div id="lista-profesores" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- RESUMEN -->
+        <div id="tab-resumen" class="tab-content space-y-6">
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                <div class="w-8 h-8 rounded-lg bg-corporate-blue/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i data-lucide="info" class="w-4 h-4 text-corporate-blue"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-corporate-blue text-sm">Verificación de Datos</h3>
+                    <p class="text-xs text-gray-600 mt-0.5">Estos totales se calculan automáticamente según los datos introducidos en las pestañas correspondientes.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Infantil -->
+                <div class="stat-card">
+                    <h3 class="font-bold mb-4 text-xs uppercase tracking-wider flex items-center gap-2" style="color:#012e5a">
+                        <i data-lucide="baby" class="w-4 h-4" style="color:#014380"></i> Infantil
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-end border-b border-dashed border-gray-200 pb-2">
+                            <span class="text-xs font-medium" style="color:#374151">Matrícula Total</span>
+                            <span id="res-infantil-alum" class="stat-value text-gray-800">0</span>
+                        </div>
+                        <div class="flex justify-between items-end border-b border-dashed border-gray-200 pb-2">
+                            <span class="text-xs font-medium" style="color:#374151">Alumnos Religión</span>
+                            <span id="res-infantil-reli" class="stat-value text-corporate-green">0</span>
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <span class="text-xs font-medium" style="color:#374151">Porcentaje</span>
+                            <span id="res-infantil-pct" class="font-bold text-sm bg-blue-50 text-corporate-blue px-2.5 py-0.5 rounded-full">0%</span>
+                        </div>
+                        <div class="bg-amber-50 p-2.5 rounded-lg flex justify-between items-center mt-1 border border-amber-100">
+                            <span class="text-xs font-semibold" style="color:#374151">Horas</span>
+                            <span id="res-infantil-horas" class="font-bold text-amber-700">0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Primaria -->
+                <div class="stat-card">
+                    <h3 class="font-bold mb-4 text-xs uppercase tracking-wider flex items-center gap-2" style="color:#012e5a">
+                        <i data-lucide="book-open" class="w-4 h-4" style="color:#014380"></i> Primaria
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-end border-b border-dashed border-gray-200 pb-2">
+                            <span class="text-xs font-medium" style="color:#374151">Matrícula Total</span>
+                            <span id="res-primaria-alum" class="stat-value text-gray-800">0</span>
+                        </div>
+                        <div class="flex justify-between items-end border-b border-dashed border-gray-200 pb-2">
+                            <span class="text-xs font-medium" style="color:#374151">Alumnos Religión</span>
+                            <span id="res-primaria-reli" class="stat-value text-corporate-green">0</span>
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <span class="text-xs font-medium" style="color:#374151">Porcentaje</span>
+                            <span id="res-primaria-pct" class="font-bold text-sm bg-blue-50 text-corporate-blue px-2.5 py-0.5 rounded-full">0%</span>
+                        </div>
+                        <div class="bg-amber-50 p-2.5 rounded-lg flex justify-between items-center mt-1 border border-amber-100">
+                            <span class="text-xs font-semibold" style="color:#374151">Horas</span>
+                            <span id="res-primaria-horas" class="font-bold text-amber-700">0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ESO -->
+                <div class="stat-card" style="border-left-color: #96a5c6;">
+                    <h3 class="font-bold mb-4 text-xs uppercase tracking-wider flex items-center gap-2" style="color:#012e5a">
+                        <i data-lucide="graduation-cap" class="w-4 h-4" style="color:#014380"></i> ESO
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-end border-b border-dashed border-gray-200 pb-2">
+                            <span class="text-xs font-medium" style="color:#374151">Matrícula Total</span>
+                            <span id="res-eso-alum" class="stat-value text-gray-800">0</span>
+                        </div>
+                        <div class="flex justify-between items-end border-b border-dashed border-gray-200 pb-2">
+                            <span class="text-xs font-medium" style="color:#374151">Alumnos Religión</span>
+                            <span id="res-eso-reli" class="stat-value text-corporate-green">0</span>
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <span class="text-xs font-medium" style="color:#374151">Porcentaje</span>
+                            <span id="res-eso-pct" class="font-bold text-sm bg-blue-50 text-corporate-blue px-2.5 py-0.5 rounded-full">0%</span>
+                        </div>
+                        <div class="bg-amber-50 p-2.5 rounded-lg flex justify-between items-center mt-1 border border-amber-100">
+                            <span class="text-xs font-semibold" style="color:#374151">Horas</span>
+                            <span id="res-eso-horas" class="font-bold text-amber-700">0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bachillerato -->
+                <div class="stat-card" style="border-left-color: #96a5c6;">
+                    <h3 class="font-bold mb-4 text-xs uppercase tracking-wider flex items-center gap-2" style="color:#012e5a">
+                        <i data-lucide="library" class="w-4 h-4" style="color:#014380"></i> Bachillerato
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-end border-b border-dashed border-gray-200 pb-2">
+                            <span class="text-xs font-medium" style="color:#374151">Matrícula Total</span>
+                            <span id="res-bach-alum" class="stat-value text-gray-800">0</span>
+                        </div>
+                        <div class="flex justify-between items-end border-b border-dashed border-gray-200 pb-2">
+                            <span class="text-xs font-medium" style="color:#374151">Alumnos Religión</span>
+                            <span id="res-bach-reli" class="stat-value text-corporate-green">0</span>
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <span class="text-xs font-medium" style="color:#374151">Porcentaje</span>
+                            <span id="res-bach-pct" class="font-bold text-sm bg-blue-50 text-corporate-blue px-2.5 py-0.5 rounded-full">0%</span>
+                        </div>
+                        <div class="bg-amber-50 p-2.5 rounded-lg flex justify-between items-center mt-1 border border-amber-100">
+                            <span class="text-xs font-semibold" style="color:#374151">Horas</span>
+                            <span id="res-bach-horas" class="font-bold text-amber-700">0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarjeta Global -->
+                <div class="p-6 rounded-xl shadow-lg md:col-span-2 lg:col-span-4 mt-2" style="background:#f0f4f8; border:1px solid #d1dbe8">
+                    <h3 class="font-bold mb-5 text-sm uppercase tracking-wider border-b pb-3 flex items-center gap-2" style="color:#012e5a; border-color:#c5d2e0">
+                        <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                        Totales Globales del Centro
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                        <div>
+                            <span class="text-xs block mb-1 uppercase tracking-wide font-semibold" style="color:#4b6080">Total Alumnos</span>
+                            <span id="res-total-alum" class="font-bold text-3xl" style="color:#012e5a">0</span>
+                        </div>
+                        <div>
+                            <span class="text-xs block mb-1 uppercase tracking-wide font-semibold" style="color:#4b6080">Total Religión</span>
+                            <span id="res-total-reli" class="font-bold text-3xl" style="color:#003a1b">0</span>
+                        </div>
+                        <div>
+                            <span class="text-xs block mb-1 uppercase tracking-wide font-semibold" style="color:#4b6080">Total Horas</span>
+                            <span id="res-total-horas" class="font-bold text-3xl" style="color:#7c4a00">0,00</span>
+                        </div>
+                        <div>
+                            <span class="text-xs block mb-1 uppercase tracking-wide font-semibold" style="color:#4b6080">% Global</span>
+                            <span id="res-total-pct" class="text-2xl font-bold px-4 py-1.5 rounded-full inline-block mt-1" style="color:#012e5a; background:rgba(1,67,128,0.1)">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Observaciones -->
+            <div class="card p-6 mt-6">
+                <h2 class="section-header">Observaciones Finales</h2>
+                <p class="text-xs text-gray-500 mb-3">Escriba aquí cualquier incidencia o comentario relevante.</p>
+                <textarea id="obs-generales"
+                    class="form-input h-28 resize-y"></textarea>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // =============================================
+        // CONFIGURACIÓN
+        // =============================================
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxENzyQjhNHovOvkTUtUXGnmE66zmFzWH2GJNrGnJ_knC0RkG8384hD-jnCrzwzwze/exec";
+        const STORAGE_KEY = 'estadillo_matrix_v1';
+        const GRUPOS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+        const STAGES = {
+            infantil: { title: "Educación Infantil", levels: ["3 años", "4 años", "5 años", "EEI"] },
+            primaria: { title: "Educación Primaria", levels: ["1º", "2º", "3º", "4º", "5º", "6º", "EBO1"] },
+            eso: { title: "E.S.O.", levels: ["1º", "2º", "3º", "4º", "Div.1", "Div.2", "EBO2"] },
+            bach: { title: "Bachillerato", levels: ["1º", "2º"] }
+        };
+
+        // =============================================
+        // ESTADO GLOBAL
+        // =============================================
+        let globalStats = {
+            infantil: { total: 0, reli: 0, hours: 0 },
+            primaria: { total: 0, reli: 0, hours: 0 },
+            eso: { total: 0, reli: 0, hours: 0 },
+            bach: { total: 0, reli: 0, hours: 0 }
+        };
+        let _saveTimer = null;
+
+        // =============================================
+        // UTILIDADES
+        // =============================================
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function getVal(id) {
+            const el = document.getElementById(id);
+            if (!el) return 0;
+            return parseFloat(el.value.replace(',', '.')) || 0;
+        }
+
+        function formatPct(reli, total) {
+            return total > 0 ? Math.round((reli / total) * 100) + '%' : '0%';
+        }
+
+        function formatHoras(n) {
+            return n.toFixed(2).replace('.', ',');
+        }
+
+        function debounceSave() {
+            clearTimeout(_saveTimer);
+            _saveTimer = setTimeout(guardarEnStorage, 300);
+        }
+
+        // =============================================
+        // RENDERIZADO DE MATRICES
+        // =============================================
+        function renderMatrix(containerId, stageKey) {
+            const config = STAGES[stageKey];
+            const container = document.getElementById(containerId);
+
+            let html = `
+            <div class="card overflow-hidden mb-6">
+                <div class="header-gradient px-5 py-3 font-bold flex items-center gap-2" style="color:#012e5a">
+                    <i data-lucide="table" class="w-4 h-4" style="opacity:0.6"></i>
+                    ${config.title}
+                </div>
+                <div class="overflow-x-auto matrix-container">
+                    <table class="w-full text-xs border-collapse matrix-table min-w-[1400px]">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" class="bg-gray-50 w-20 sticky left-0 z-10 font-semibold text-gray-700">Nivel</th>
+                                <th colspan="10" class="bg-blue-50/70 font-semibold" style="color:#0c2d5a">TOTAL ALUMNOS (Por Grupo)</th>
+                                <th rowspan="2" class="bg-blue-200/60 w-14 font-bold text-center leading-tight px-1" style="color:#0c2d5a">TOTAL<br>ALUMNOS</th>
+                                <th colspan="10" class="bg-corporate-greenLight font-semibold" style="color:#003a1b">ALUMNOS RELIGIÓN (Por Grupo)</th>
+                                <th rowspan="2" class="bg-green-200/60 w-14 font-bold text-center leading-tight px-1" style="color:#003a1b">ALUMNOS<br>RELIGIÓN</th>
+                                <th rowspan="2" class="bg-gray-100 w-36 font-bold text-center leading-tight px-2" style="color:#374151">SI HAY AGRUPAMIENTOS<br>INDÍQUELOS</th>
+                                <th rowspan="2" class="bg-amber-50 w-16 font-bold text-center leading-tight px-1" style="color:#7c4a00">TOTAL UNIDADES<br>RELIGIÓN</th>
+                                <th rowspan="2" class="bg-amber-100/60 w-20 font-bold text-center leading-tight px-1" style="color:#7c4a00">TOTAL HORAS<br>SEMANALES<br>RELIGIÓN</th>
+                            </tr>
+                            <tr>
+                                ${GRUPOS.map(g => `<th class="w-10 bg-blue-50/50 text-center font-semibold" style="color:#0c2d5a">${g}</th>`).join('')}
+                                ${GRUPOS.map(g => `<th class="w-10 bg-corporate-greenLight/50 text-center font-semibold" style="color:#003a1b">${g}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            config.levels.forEach((level, idx) => {
+                const baseId = `${stageKey}-${idx}`;
+                html += `<tr class="hover:bg-blue-50/30 group">
+                    <td class="font-semibold text-gray-700 bg-gray-50 sticky left-0 group-hover:bg-blue-50/50">${level}</td>`;
+
+                GRUPOS.forEach(g => {
+                    html += `<td><input type="number" id="${baseId}-T-${g}" min="0" placeholder="-"></td>`;
+                });
+
+                // Columna TOTAL ALUMNOS por fila
+                html += `<td class="text-center font-bold bg-blue-100/40" id="${baseId}-sum-T" style="color:#0c2d5a">0</td>`;
+
+                GRUPOS.forEach(g => {
+                    html += `<td><input type="number" id="${baseId}-R-${g}" min="0" placeholder="-" class="text-corporate-green font-medium"></td>`;
+                });
+
+                // Columna ALUMNOS RELIGIÓN por fila
+                html += `<td class="text-center font-bold bg-green-100/40" id="${baseId}-sum-R" style="color:#003a1b">0</td>`;
+
+                html += `<td class="text-center"><input type="text" id="${baseId}-agrup" placeholder="Ej: B+C+E / G+J" class="text-xs text-gray-600 w-full"></td>`;
+                html += `<td class="text-center"><input type="number" id="${baseId}-uds" min="0" class="font-bold text-amber-800 text-center w-full"></td>`;
+                html += `<td class="text-center bg-amber-50/40"><input type="text" id="${baseId}-horas"
+                    class="font-bold text-amber-800 text-center w-full bg-transparent"
+                    placeholder="Ej: 1/2 h = 0,5 h"
+                    title="Utilice comas para los decimales, no use el punto"
+                    onfocus="if(!this.value)this.placeholder=''"
+                    onblur="if(!this.value)this.placeholder='Ej: 1/2 h = 0,5 h'"
+                    onclick="alert('Utilice comas para los decimales, no use el punto.\nEj: media hora = 0,5')"></td>`;
+                html += `</tr>`;
+            });
+
+            html += `<tr class="bg-gray-100 font-bold text-xs">
+                <td class="sticky left-0 bg-gray-100 text-gray-700">TOTAL</td>
+                <td colspan="10" class="bg-gray-50"></td>
+                <td class="text-center text-sm bg-blue-200/60 font-bold" style="color:#0c2d5a" id="${stageKey}-sum-total">0</td>
+                <td colspan="10" class="bg-gray-50"></td>
+                <td class="text-center text-sm bg-green-200/60 font-bold" style="color:#003a1b" id="${stageKey}-sum-reli">0</td>
+                <td class="bg-gray-100"></td>
+                <td class="text-center text-sm text-amber-800 bg-amber-50" id="${stageKey}-sum-uds">0</td>
+                <td class="text-center text-sm text-amber-800 bg-amber-100/70" id="${stageKey}-sum-horas">0</td>
+            </tr></tbody></table></div></div>`;
+
+            container.innerHTML = html;
+        }
+
+        // =============================================
+        // NAVEGACIÓN DE PESTAÑAS
+        // =============================================
+        function switchTab(id) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('active');
+                el.classList.add('text-gray-500');
+            });
+
+            document.getElementById('tab-' + id).classList.add('active');
+            const btn = document.getElementById('btn-' + id);
+            btn.classList.remove('text-gray-500');
+            btn.classList.add('active');
+
+            if (id === 'resumen') actualizarResumen();
+            if (id === 'sinopsis') renderSinopsis();
+        }
+
+        // =============================================
+        // CÁLCULOS Y VALIDACIÓN
+        // =============================================
+        function calcularTotales() {
+            Object.keys(STAGES).forEach(key => {
+                let sumTotal = 0, sumReli = 0, sumUds = 0, sumHoras = 0;
+
+                STAGES[key].levels.forEach((_, idx) => {
+                    const baseId = `${key}-${idx}`;
+                    let rowTotal = 0, rowReli = 0;
+
+                    GRUPOS.forEach(g => {
+                        rowTotal += getVal(`${baseId}-T-${g}`);
+                        rowReli += getVal(`${baseId}-R-${g}`);
+                    });
+
+                    // Actualizar sumas por fila
+                    const sumTEl = document.getElementById(`${baseId}-sum-T`);
+                    if (sumTEl) sumTEl.textContent = rowTotal;
+                    const sumREl = document.getElementById(`${baseId}-sum-R`);
+                    if (sumREl) sumREl.textContent = rowReli;
+
+                    sumTotal += rowTotal;
+                    sumReli += rowReli;
+                    sumUds += getVal(`${baseId}-uds`);
+                    sumHoras += getVal(`${baseId}-horas`);
+                });
+
+                document.getElementById(`${key}-sum-total`).textContent = sumTotal;
+                document.getElementById(`${key}-sum-reli`).textContent = sumReli;
+                document.getElementById(`${key}-sum-uds`).textContent = sumUds;
+                document.getElementById(`${key}-sum-horas`).textContent = formatHoras(sumHoras);
+
+                globalStats[key] = { total: sumTotal, reli: sumReli, hours: sumHoras };
+            });
+
+            if (document.getElementById('tab-resumen').classList.contains('active')) {
+                actualizarResumen();
+            }
+        }
+
+        function validarGrupo(inputEl) {
+            const parts = inputEl.id.split('-');
+            const stageKey = parts[0];
+            const idx = parts[1];
+            const grupo = parts[3];
+
+            const total = getVal(`${stageKey}-${idx}-T-${grupo}`);
+            const reli = getVal(`${stageKey}-${idx}-R-${grupo}`);
+            const reliEl = document.getElementById(`${stageKey}-${idx}-R-${grupo}`);
+
+            if (reliEl) {
+                if (reli > total && total > 0) {
+                    reliEl.classList.add('input-warning');
+                    reliEl.title = 'Alumnos de religión supera el total del grupo';
+                } else {
+                    reliEl.classList.remove('input-warning');
+                    reliEl.title = '';
+                }
+            }
+        }
+
+        function actualizarResumen() {
+            let gTotal = 0, gReli = 0, gHoras = 0;
+
+            Object.keys(STAGES).forEach(s => {
+                const data = globalStats[s];
+                document.getElementById(`res-${s}-alum`).textContent = data.total;
+                document.getElementById(`res-${s}-reli`).textContent = data.reli;
+                document.getElementById(`res-${s}-pct`).textContent = formatPct(data.reli, data.total);
+                document.getElementById(`res-${s}-horas`).textContent = formatHoras(data.hours);
+
+                gTotal += data.total;
+                gReli += data.reli;
+                gHoras += data.hours;
+            });
+
+            document.getElementById('res-total-alum').textContent = gTotal;
+            document.getElementById('res-total-reli').textContent = gReli;
+            document.getElementById('res-total-horas').textContent = formatHoras(gHoras);
+            document.getElementById('res-total-pct').textContent = formatPct(gReli, gTotal);
+        }
+
+        // =============================================
+        // PERSISTENCIA (localStorage)
+        // =============================================
+        function guardarEnStorage() {
+            const data = {};
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.id) {
+                    data[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+                }
+            });
+
+            const profesores = [];
+            document.querySelectorAll('#lista-profesores [data-profesor]').forEach(card => {
+                const inputs = card.querySelectorAll('input');
+                if (inputs.length >= 3) {
+                    profesores.push({
+                        nombre: inputs[0].value,
+                        apellidos: inputs[1].value,
+                        niveles: inputs[2].value
+                    });
+                }
+            });
+            data['profesores_data'] = JSON.stringify(profesores);
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function cargarDatos() {
+            let data;
+            // Si el HTML fue descargado con datos embebidos, los usa directamente
+            if (window.__ESTADILLO_DATA__) {
+                data = window.__ESTADILLO_DATA__;
+            } else {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) { addProfesor(); return; }
+                try {
+                    data = JSON.parse(raw);
+                } catch (e) {
+                    console.error('Error al leer datos guardados:', e);
+                    addProfesor();
+                    return;
+                }
+            }
+
+            Object.keys(data).forEach(k => {
+                if (k === 'profesores_data') return;
+                const el = document.getElementById(k);
+                if (el) {
+                    if (el.type === 'checkbox') el.checked = data[k];
+                    else el.value = data[k];
+                }
+            });
+
+            const container = document.getElementById('lista-profesores');
+            container.innerHTML = '';
+            if (data['profesores_data']) {
+                try {
+                    const profesores = JSON.parse(data['profesores_data']);
+                    if (profesores.length > 0) profesores.forEach(p => addProfesor(p));
+                    else addProfesor();
+                } catch (e) { addProfesor(); }
+            } else {
+                addProfesor();
+            }
+
+            calcularTotales();
+        }
+
+        // =============================================
+        // PROFESORADO
+        // =============================================
+        function addProfesor(data) {
+            const d = data || { nombre: '', apellidos: '', niveles: '' };
+            const container = document.getElementById('lista-profesores');
+            container.insertAdjacentHTML('beforeend', `
+                <div class="profesor-card group" data-profesor>
+                    <button data-action="remove-profesor"
+                        class="absolute top-3 right-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg p-1.5 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Eliminar docente">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input type="text" class="form-input text-sm" placeholder="Nombre" value="${escapeHTML(d.nombre)}">
+                        <input type="text" class="form-input text-sm" placeholder="Apellidos" value="${escapeHTML(d.apellidos)}">
+                        <input type="text" class="form-input text-sm md:col-span-2" placeholder="Infantil / Primaria / ESO / Bachillerato" value="${escapeHTML(d.niveles)}">
+                    </div>
+                </div>
+            `);
+            lucide.createIcons();
+        }
+
+        // =============================================
+        // SINOPSIS
+        // =============================================
+        function renderSinopsis() {
+            const v = id => document.getElementById(id)?.value || '';
+            const ck = id => document.getElementById(id)?.checked;
+
+            function buildHeader() {
+                const profesores = [];
+                document.querySelectorAll('#lista-profesores [data-profesor]').forEach(card => {
+                    const ins = card.querySelectorAll('input');
+                    if (ins.length >= 3 && (ins[0].value || ins[1].value)) {
+                        profesores.push(`${ins[0].value} ${ins[1].value}${ins[2].value ? ' (' + ins[2].value + ')' : ''}`);
+                    }
+                });
+                return `
+                <table class="sin-header-table">
+                    <tr>
+                        <td rowspan="5" class="sin-logo-cell" style="width:120px">
+                            <img src="https://raw.githubusercontent.com/ia-esc/estadillo/master/logo_DEEALVARO.jpg" alt="Logo DEE" style="height:44px;width:auto">
+                        </td>
+                        <td class="sin-lbl">VICARÍA</td>
+                        <td class="sin-val sin-hl" style="width:20px">${v('vicaria')}</td>
+                        <td class="sin-lbl">CURSO</td>
+                        <td class="sin-val">${v('curso')}</td>
+                        <td class="sin-lbl">TIPO</td>
+                        <td class="sin-val">${v('tipo-centro')}</td>
+                        <td class="sin-lbl">CÓDIGO OFICIAL</td>
+                        <td class="sin-val" style="min-width:90px">${v('codigo-oficial')}</td>
+                    </tr>
+                    <tr>
+                        <td class="sin-lbl" colspan="2">CENTRO EDUCATIVO</td>
+                        <td colspan="6" class="sin-val" style="font-weight:600">${v('nombre-centro')}</td>
+                    </tr>
+                    <tr>
+                        <td class="sin-lbl">DIRECCIÓN</td>
+                        <td class="sin-val" colspan="3">${v('direccion')}</td>
+                        <td class="sin-lbl">C.P.</td>
+                        <td class="sin-val">${v('cp')}</td>
+                        <td class="sin-lbl">MUNICIPIO</td>
+                        <td class="sin-val">${v('municipio')}</td>
+                    </tr>
+                    <tr>
+                        <td class="sin-lbl">TELÉFONOS</td>
+                        <td class="sin-val" colspan="3">${v('telefono')}</td>
+                        <td class="sin-lbl">E-MAIL</td>
+                        <td class="sin-val" colspan="3">${v('email')}</td>
+                    </tr>
+                    <tr>
+                        <td class="sin-lbl">DIRECTOR/A</td>
+                        <td class="sin-val" colspan="3">${v('director')}</td>
+                        <td class="sin-lbl">INSPECTOR/A</td>
+                        <td class="sin-val">${v('inspector')}</td>
+                        <td class="sin-lbl">FECHA</td>
+                        <td class="sin-val">${v('fecha')}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="9" class="sin-otras">
+                            <strong>Otras religiones:</strong>
+                            Islámica: <strong>${ck('check-islamica') ? 'SÍ' : 'NO'}</strong> &nbsp;|&nbsp;
+                            Evangélica: <strong>${ck('check-evangelica') ? 'SÍ' : 'NO'}</strong>
+                            &emsp;
+                            <strong>Docentes de Religión Católica:</strong>
+                            ${profesores.length ? profesores.join(' &nbsp;·&nbsp; ') : '—'}
+                        </td>
+                    </tr>
+                </table>`;
+            }
+
+            function buildStage(stageKey) {
+                const cfg = STAGES[stageKey];
+                let rows = '', sumT = 0, sumR = 0, sumU = 0, sumH = 0;
+                cfg.levels.forEach((lvl, idx) => {
+                    const base = `${stageKey}-${idx}`;
+                    let rT = 0, rR = 0, tds = '', rds = '';
+                    GRUPOS.forEach(g => {
+                        const tv = getVal(`${base}-T-${g}`);
+                        const rv = getVal(`${base}-R-${g}`);
+                        rT += tv; rR += rv;
+                        tds += `<td class="sin-rn">${tv || ''}</td>`;
+                        rds += `<td class="sin-rrn">${rv || ''}</td>`;
+                    });
+                    const ag = document.getElementById(`${base}-agrup`)?.value || '';
+                    const ud = getVal(`${base}-uds`);
+                    const hr = document.getElementById(`${base}-horas`)?.value || '';
+                    const hrN = parseFloat(String(hr).replace(',', '.')) || 0;
+                    sumT += rT; sumR += rR; sumU += ud; sumH += hrN;
+                    rows += `<tr>
+                        <td class="sin-lv">${lvl}</td>
+                        ${tds}<td class="sin-gs">${rT || ''}</td>
+                        ${rds}<td class="sin-rs">${rR || ''}</td>
+                        <td class="sin-ag">${ag}</td>
+                        <td>${ud || ''}</td>
+                        <td>${hr}</td>
+                    </tr>`;
+                });
+                return `<div class="sin-stage">
+                    <div class="sin-stage-title">${cfg.title.toUpperCase()}</div>
+                    <table class="sin-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" class="sin-th-lv">NIVEL</th>
+                                <th colspan="10" class="sin-th-g">TOTAL ALUMNOS POR GRUPO</th>
+                                <th rowspan="2" class="sin-th-gs">TOT.</th>
+                                <th colspan="10" class="sin-th-rg">ALUMNOS RELIGIÓN POR GRUPO</th>
+                                <th rowspan="2" class="sin-th-rs">REL.</th>
+                                <th rowspan="2" class="sin-th-ag">AGRUPAMIENTOS</th>
+                                <th rowspan="2" class="sin-th-ud">UDS</th>
+                                <th rowspan="2" class="sin-th-hr">HORAS</th>
+                            </tr>
+                            <tr>
+                                ${GRUPOS.map(g => `<th class="sin-th-lt">${g}</th>`).join('')}
+                                ${GRUPOS.map(g => `<th class="sin-th-lr">${g}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                            <tr class="sin-tot-r">
+                                <td class="sin-lv-tot">TOTAL</td>
+                                <td colspan="10"></td>
+                                <td class="sin-gs sin-tot-v">${sumT}</td>
+                                <td colspan="10"></td>
+                                <td class="sin-rs sin-tot-v">${sumR}</td>
+                                <td></td>
+                                <td class="sin-tot-v">${sumU || ''}</td>
+                                <td class="sin-tot-v">${sumH ? sumH.toFixed(2).replace('.',',') : ''}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>`;
+            }
+
+            function buildProfTable() {
+                const rows = [];
+                document.querySelectorAll('#lista-profesores [data-profesor]').forEach(card => {
+                    const ins = card.querySelectorAll('input');
+                    if (ins.length >= 3) rows.push(`<tr><td>${ins[0].value}</td><td>${ins[1].value}</td><td>${ins[2].value}</td></tr>`);
+                });
+                if (!rows.length) return '';
+                return `<div class="sin-prof">
+                    <div class="sin-prof-title">Profesorado de Religión Católica</div>
+                    <table class="sin-prof-table">
+                        <thead><tr><th>Nombre</th><th>Apellidos</th><th>Niveles que imparte</th></tr></thead>
+                        <tbody>${rows.join('')}</tbody>
+                    </table>
+                </div>`;
+            }
+
+            const hdr = buildHeader();
+            document.getElementById('sinopsis-content').innerHTML = `
+                <div class="sin-folio">
+                    ${hdr}
+                    ${buildStage('infantil')}
+                    ${buildStage('primaria')}
+                </div>
+                <div class="sin-folio">
+                    ${hdr}
+                    ${buildStage('eso')}
+                    ${buildStage('bach')}
+                    ${buildProfTable()}
+                </div>`;
+        }
+
+        function imprimirSinopsis() {
+            renderSinopsis();
+            document.body.classList.add('print-sinopsis');
+            window.print();
+            document.body.classList.remove('print-sinopsis');
+        }
+
+        // =============================================
+        // DESCARGAR HTML CON DATOS EMBEBIDOS
+        // =============================================
+        function descargarHTML() {
+            const vicaria  = document.getElementById('vicaria').value  || 'SV';
+            const tipo     = document.getElementById('tipo-centro').value || 'CENTRO';
+            const nombre   = document.getElementById('nombre-centro').value || 'SinNombre';
+            const codigo   = document.getElementById('codigo-oficial').value || 'SinCodigo';
+            const filename = `${vicaria} ${tipo} ${nombre} ${codigo}.html`;
+
+            const data = {};
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.id) data[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+            });
+            const profesores = [];
+            document.querySelectorAll('#lista-profesores [data-profesor]').forEach(card => {
+                const ins = card.querySelectorAll('input');
+                if (ins.length >= 3) {
+                    profesores.push({ nombre: ins[0].value, apellidos: ins[1].value, niveles: ins[2].value });
+                }
+            });
+            data['profesores_data'] = JSON.stringify(profesores);
+
+            const dataScript = `<script>window.__ESTADILLO_DATA__=${JSON.stringify(data)};<\/script>`;
+            const html = document.documentElement.outerHTML.replace('</head>', dataScript + '\n</head>');
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // =============================================
+        // LIMPIAR FORMULARIO
+        // =============================================
+        function limpiarFormulario() {
+            if (!confirm("¿Estás seguro de que quieres borrar TODOS los datos?\n\nEsta acción no se puede deshacer.")) return;
+
+            localStorage.removeItem(STORAGE_KEY);
+
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.type === 'checkbox') el.checked = false;
+                else el.value = "";
+            });
+
+            document.querySelectorAll('.input-warning').forEach(el => {
+                el.classList.remove('input-warning');
+                el.title = '';
+            });
+
+            document.getElementById('lista-profesores').innerHTML = '';
+            addProfesor();
+            calcularTotales();
+            alert("Formulario limpiado correctamente.");
+        }
+
+        // =============================================
+        // EXPORTACIÓN EXCEL
+        // =============================================
+        function generarWorkbook() {
+            const wb = XLSX.utils.book_new();
+            const nombreCentro = document.getElementById('nombre-centro').value || 'Centro';
+            const codigo = document.getElementById('codigo-oficial').value || 'SinCodigo';
+
+            const datosGenerales = [
+                ["DATOS DEL CENTRO"],
+                ["Código Oficial", document.getElementById('codigo-oficial').value],
+                ["Nombre", document.getElementById('nombre-centro').value],
+                ["Vicaría", document.getElementById('vicaria').value],
+                ["Tipo", document.getElementById('tipo-centro').value],
+                ["Curso", document.getElementById('curso').value],
+                ["Dirección", document.getElementById('direccion').value],
+                ["CP", document.getElementById('cp').value],
+                ["Municipio", document.getElementById('municipio').value],
+                ["Teléfono", document.getElementById('telefono').value],
+                ["E-MAIL", document.getElementById('email').value],
+                ["Fecha", document.getElementById('fecha').value],
+                ["Director/a", document.getElementById('director').value],
+                ["Inspector/a", document.getElementById('inspector').value],
+                ["Otras Religiones"],
+                ["Religión Islámica", document.getElementById('check-islamica').checked ? "SÍ" : "NO"],
+                ["Religión Evangélica", document.getElementById('check-evangelica').checked ? "SÍ" : "NO"],
+                ["Observaciones", document.getElementById('obs-generales').value]
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datosGenerales), "Datos Generales");
+
+            function extraerMatriz(stageKey) {
+                const rows = [["Nivel", "Total Alumnos", "Alumnos Religión", "Unidades", "Horas"]];
+                STAGES[stageKey].levels.forEach((lvl, idx) => {
+                    const baseId = `${stageKey}-${idx}`;
+                    let rowTotal = 0, rowReli = 0;
+                    GRUPOS.forEach(g => {
+                        rowTotal += getVal(`${baseId}-T-${g}`);
+                        rowReli += getVal(`${baseId}-R-${g}`);
+                    });
+                    rows.push([lvl, rowTotal, rowReli, getVal(`${baseId}-uds`), getVal(`${baseId}-horas`)]);
+                });
+                return rows;
+            }
+
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["EDUCACIÓN INFANTIL"]].concat(extraerMatriz('infantil'))), "Infantil");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["EDUCACIÓN PRIMARIA"]].concat(extraerMatriz('primaria'))), "Primaria");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["E.S.O."]].concat(extraerMatriz('eso'))), "ESO");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["BACHILLERATO"]].concat(extraerMatriz('bach'))), "Bachillerato");
+
+            const profesores = [["Nombre", "Apellidos", "Niveles"]];
+            document.querySelectorAll('#lista-profesores [data-profesor]').forEach(card => {
+                const inputs = card.querySelectorAll('input');
+                if (inputs.length >= 3) {
+                    profesores.push([inputs[0].value, inputs[1].value, inputs[2].value]);
+                }
+            });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(profesores), "Profesorado");
+
+            XLSX.utils.book_append_sheet(wb,
+                XLSX.utils.aoa_to_sheet([["Observaciones"], [document.getElementById('obs-generales').value]]),
+                "Observaciones"
+            );
+
+            return { wb, codigo, nombreCentro };
+        }
+
+        function descargarExcel() {
+            try {
+                const { wb, codigo, nombreCentro } = generarWorkbook();
+                XLSX.writeFile(wb, `Estadillo_${codigo}_${nombreCentro}.xlsx`);
+            } catch (e) {
+                alert("Error al generar el Excel: " + e.message);
+            }
+        }
+
+        // =============================================
+        // ENVÍO A NUBE (Google Apps Script)
+        // =============================================
+        function guardarEnNube() {
+            const btn = document.getElementById('btn-cloud');
+            const originalHTML = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Enviando...`;
+            lucide.createIcons();
+
+            try {
+                const { wb, codigo, nombreCentro } = generarWorkbook();
+                const filename = `Estadillo_${codigo}_${nombreCentro}.xlsx`;
+                const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+
+                fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ filename: filename, base64: wbOut })
+                })
+                    .then(response => {
+                        if (response.redirected && response.url.includes('ServiceLogin')) {
+                            throw new Error("Google solicita inicio de sesión. El script NO está configurado como 'Cualquier usuario' (Anyone).");
+                        }
+                        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert('¡ÉXITO!\n\nEl archivo se ha enviado correctamente.');
+                        } else {
+                            alert('Error del script: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error Fetch:', error);
+                        alert('ERROR DE PERMISOS O RED\n\n' + error.message + '\n\nSOLUCIÓN: Asegúrese de que la implementación del script tenga acceso configurado para "Cualquier persona" (Anyone).');
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHTML;
+                        lucide.createIcons();
+                    });
+
+            } catch (e) {
+                console.error(e);
+                alert("Error crítico interno: " + e.message);
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+                lucide.createIcons();
+            }
+        }
+
+        // =============================================
+        // DELEGACIÓN DE EVENTOS
+        // =============================================
+        document.addEventListener('input', function (e) {
+            const el = e.target;
+            if (!el.matches('input, textarea')) return;
+
+            if (el.closest('.matrix-table')) {
+                calcularTotales();
+                if (el.id && (el.id.includes('-T-') || el.id.includes('-R-'))) {
+                    validarGrupo(el);
+                }
+            }
+
+            debounceSave();
+        });
+
+        document.addEventListener('change', function (e) {
+            const el = e.target;
+            if (!el.matches('input, select, textarea')) return;
+            guardarEnStorage();
+            if (el.closest('.matrix-table')) {
+                calcularTotales();
+            }
+        });
+
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('[data-action="remove-profesor"]');
+            if (btn) {
+                btn.closest('[data-profesor]').remove();
+                guardarEnStorage();
+            }
+        });
+
+        // =============================================
+        // INICIALIZACIÓN
+        // =============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            renderMatrix('matrix-infantil', 'infantil');
+            renderMatrix('matrix-primaria', 'primaria');
+            renderMatrix('matrix-eso', 'eso');
+            renderMatrix('matrix-bach', 'bach');
+            lucide.createIcons();
+            cargarDatos();
+
+            // Si el archivo fue enviado por un centro (datos embebidos),
+            // mostrar directamente la Sinopsis en modo inspector
+            if (window.__ESTADILLO_DATA__) {
+                activarModoInspector();
+            }
+        });
+
+        function activarModoInspector() {
+            // Ocultar toda la UI de edición
+            document.querySelector('header').classList.add('hidden');
+            document.querySelector('nav').classList.add('hidden');
+
+            // Ocultar todas las pestañas de edición
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+
+            // Mostrar sinopsis
+            document.getElementById('tab-sinopsis').classList.add('active');
+            renderSinopsis();
+
+            // Añadir cabecera de inspector y botón imprimir
+            const main = document.querySelector('main');
+            const bar = document.createElement('div');
+            bar.className = 'no-print flex items-center justify-between mb-4 px-2';
+            bar.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <img src="https://raw.githubusercontent.com/ia-esc/estadillo/master/logo_DEEALVARO.jpg" alt="Logo" style="height:40px;width:auto">
+                    <div>
+                        <p class="text-xs font-bold text-corporate-blue uppercase tracking-wide">Estadillo recibido — Vista Inspector</p>
+                        <p class="text-xs text-gray-500">Archivo de sólo lectura. Los datos no se pueden modificar.</p>
+                    </div>
+                </div>
+                <button onclick="imprimirSinopsis()" class="btn btn-primary">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Imprimir Sinopsis
+                </button>`;
+            main.prepend(bar);
+            lucide.createIcons();
+        }
+    </script>
+</body>
+
+</html>
