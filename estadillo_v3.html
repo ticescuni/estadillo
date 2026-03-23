@@ -1140,11 +1140,7 @@
         // DESCARGAR HTML CON DATOS EMBEBIDOS
         // =============================================
         function descargarHTML() {
-            const vicaria  = document.getElementById('vicaria').value  || 'SV';
-            const tipo     = document.getElementById('tipo-centro').value || 'CENTRO';
-            const nombre   = document.getElementById('nombre-centro').value || 'SinNombre';
-            const codigo   = document.getElementById('codigo-oficial').value || 'SinCodigo';
-            const filename = `${vicaria} ${tipo} ${nombre} ${codigo}.html`;
+            const filename = getNombreArchivo() + '.html';
 
             const data = {};
             document.querySelectorAll('input, select, textarea').forEach(el => {
@@ -1195,75 +1191,113 @@
         }
 
         // =============================================
+        // NOMBRE DE ARCHIVO (helper compartido)
+        // =============================================
+        function getNombreArchivo() {
+            const vicaria = document.getElementById('vicaria').value  || 'SV';
+            const tipo    = document.getElementById('tipo-centro').value || 'CENTRO';
+            const nombre  = document.getElementById('nombre-centro').value || 'SinNombre';
+            const codigo  = document.getElementById('codigo-oficial').value || 'SinCodigo';
+            return `${vicaria} ${tipo} ${nombre} ${codigo}`;
+        }
+
+        // =============================================
         // EXPORTACIÓN EXCEL
         // =============================================
         function generarWorkbook() {
-            const wb = XLSX.utils.book_new();
-            const nombreCentro = document.getElementById('nombre-centro').value || 'Centro';
-            const codigo = document.getElementById('codigo-oficial').value || 'SinCodigo';
+            const wb   = XLSX.utils.book_new();
+            const nombre = getNombreArchivo();
 
-            const datosGenerales = [
-                ["DATOS DEL CENTRO"],
-                ["Código Oficial", document.getElementById('codigo-oficial').value],
-                ["Nombre", document.getElementById('nombre-centro').value],
-                ["Vicaría", document.getElementById('vicaria').value],
-                ["Tipo", document.getElementById('tipo-centro').value],
-                ["Curso", document.getElementById('curso').value],
-                ["Dirección", document.getElementById('direccion').value],
-                ["CP", document.getElementById('cp').value],
-                ["Municipio", document.getElementById('municipio').value],
-                ["Teléfono", document.getElementById('telefono').value],
-                ["E-MAIL", document.getElementById('email').value],
-                ["Fecha", document.getElementById('fecha').value],
-                ["Director/a", document.getElementById('director').value],
-                ["Inspector/a", document.getElementById('inspector').value],
-                ["Otras Religiones"],
-                ["Religión Islámica", document.getElementById('check-islamica').checked ? "SÍ" : "NO"],
-                ["Religión Evangélica", document.getElementById('check-evangelica').checked ? "SÍ" : "NO"],
-                ["Observaciones", document.getElementById('obs-generales').value]
-            ];
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datosGenerales), "Datos Generales");
-
-            function extraerMatriz(stageKey) {
-                const rows = [["Nivel", "Total Alumnos", "Alumnos Religión", "Unidades", "Horas"]];
-                STAGES[stageKey].levels.forEach((lvl, idx) => {
-                    const baseId = `${stageKey}-${idx}`;
-                    let rowTotal = 0, rowReli = 0;
-                    GRUPOS.forEach(g => {
-                        rowTotal += getVal(`${baseId}-T-${g}`);
-                        rowReli += getVal(`${baseId}-R-${g}`);
-                    });
-                    rows.push([lvl, rowTotal, rowReli, getVal(`${baseId}-uds`), getVal(`${baseId}-horas`)]);
-                });
-                return rows;
-            }
-
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["EDUCACIÓN INFANTIL"]].concat(extraerMatriz('infantil'))), "Infantil");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["EDUCACIÓN PRIMARIA"]].concat(extraerMatriz('primaria'))), "Primaria");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["E.S.O."]].concat(extraerMatriz('eso'))), "ESO");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["BACHILLERATO"]].concat(extraerMatriz('bach'))), "Bachillerato");
-
-            const profesores = [["Nombre", "Apellidos", "Niveles"]];
+            // ── Hoja SINOPSIS ──────────────────────────────────────
+            const v  = id => document.getElementById(id)?.value || '';
+            const ck = id => document.getElementById(id)?.checked ? 'SÍ' : 'NO';
+            const profesLista = [];
             document.querySelectorAll('#lista-profesores [data-profesor]').forEach(card => {
-                const inputs = card.querySelectorAll('input');
-                if (inputs.length >= 3) {
-                    profesores.push([inputs[0].value, inputs[1].value, inputs[2].value]);
-                }
+                const ins = card.querySelectorAll('input');
+                if (ins.length >= 3 && (ins[0].value || ins[1].value))
+                    profesLista.push(`${ins[0].value} ${ins[1].value}${ins[2].value ? ' ('+ins[2].value+')' : ''}`);
             });
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(profesores), "Profesorado");
 
-            XLSX.utils.book_append_sheet(wb,
-                XLSX.utils.aoa_to_sheet([["Observaciones"], [document.getElementById('obs-generales').value]]),
-                "Observaciones"
-            );
+            const sin = [];
+            sin.push(['Delegación Episcopal de Enseñanza - Arzobispado de Madrid', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'VICARÍA:', v('vicaria'), '', 'CURSO:', v('curso')]);
+            sin.push(['TIPO DE CENTRO:', v('tipo-centro'), '', '', 'CÓDIGO OFICIAL:', v('codigo-oficial')]);
+            sin.push(['CENTRO EDUCATIVO:', v('nombre-centro')]);
+            sin.push(['DIRECCIÓN:', v('direccion'), '', '', '', '', 'CP:', v('cp'), '', 'MUNICIPIO:', v('municipio')]);
+            sin.push(['TELÉFONOS:', v('telefono'), '', '', '', '', 'E-MAIL:', v('email')]);
+            sin.push(['DIRECTOR/A:', v('director'), '', '', '', '', 'INSPECTOR/A:', v('inspector'), '', '', 'FECHA:', v('fecha')]);
+            sin.push(['Otras religiones — Islámica:', ck('check-islamica'), '', 'Evangélica:', ck('check-evangelica')]);
+            sin.push(['DOCENTES DE RELIGIÓN CATÓLICA:', profesLista.join(' · ')]);
+            sin.push([]);
 
-            return { wb, codigo, nombreCentro };
+            const grupoHeader = ['NIVEL', ...GRUPOS, 'TOTAL', ...GRUPOS, 'TOTAL', 'AGRUPAMIENTOS', 'UNIDADES', 'HORAS'];
+            const grupoSubh   = ['', ...GRUPOS.map(() => 'TOTAL ALUMNOS'), '', ...GRUPOS.map(() => 'ALUMNOS RELIGIÓN'), '', '', '', ''];
+
+            Object.keys(STAGES).forEach(stageKey => {
+                const cfg = STAGES[stageKey];
+                sin.push([cfg.title.toUpperCase()]);
+                sin.push(grupoHeader);
+
+                let sumT = 0, sumR = 0, sumU = 0, sumH = 0;
+                cfg.levels.forEach((lvl, idx) => {
+                    const base = `${stageKey}-${idx}`;
+                    const row  = [lvl];
+                    let rT = 0, rR = 0;
+                    GRUPOS.forEach(g => { const n = getVal(`${base}-T-${g}`); row.push(n || ''); rT += n; });
+                    row.push(rT || '');
+                    GRUPOS.forEach(g => { const n = getVal(`${base}-R-${g}`); row.push(n || ''); rR += n; });
+                    row.push(rR || '');
+                    const ag = document.getElementById(`${base}-agrup`)?.value || '';
+                    const ud = getVal(`${base}-uds`);
+                    const hr = document.getElementById(`${base}-horas`)?.value || '';
+                    row.push(ag, ud || '', hr);
+                    sumT += rT; sumR += rR; sumU += ud;
+                    sumH += parseFloat(String(hr).replace(',', '.')) || 0;
+                    sin.push(row);
+                });
+                const tot = ['TOTAL ALUMNADO', ...Array(10).fill(''), sumT, ...Array(10).fill(''), sumR, '', sumU || '', sumH ? sumH.toFixed(2).replace('.', ',') : ''];
+                sin.push(tot);
+                sin.push([]);
+            });
+
+            sin.push(['PROFESORADO DE RELIGIÓN CATÓLICA']);
+            sin.push(['Nombre', 'Apellidos', 'Niveles que imparte']);
+            document.querySelectorAll('#lista-profesores [data-profesor]').forEach(card => {
+                const ins = card.querySelectorAll('input');
+                if (ins.length >= 3) sin.push([ins[0].value, ins[1].value, ins[2].value]);
+            });
+            sin.push([]);
+            sin.push(['Observaciones:', v('obs-generales')]);
+
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sin), 'SINOPSIS');
+
+            // ── Hoja RESUMEN (para agregación) ────────────────────
+            const resHeader = [
+                'VICARÍA', 'TIPO DE CENTRO', 'NOMBRE CENTRO', 'CÓDIGO OFICIAL',
+                'INFANTIL - Total Alumnado', 'INFANTIL - Alumnos Religión', 'INFANTIL - Unidades', 'INFANTIL - Horas',
+                'PRIMARIA - Total Alumnado', 'PRIMARIA - Alumnos Religión', 'PRIMARIA - Unidades', 'PRIMARIA - Horas',
+                'ESO - Total Alumnado',      'ESO - Alumnos Religión',      'ESO - Unidades',      'ESO - Horas',
+                'BACHILLERATO - Total Alumnado', 'BACHILLERATO - Alumnos Religión', 'BACHILLERATO - Unidades', 'BACHILLERATO - Horas'
+            ];
+            const resRow = [v('vicaria'), v('tipo-centro'), v('nombre-centro'), v('codigo-oficial')];
+            Object.keys(STAGES).forEach(stageKey => {
+                let sT = 0, sR = 0, sU = 0, sH = 0;
+                STAGES[stageKey].levels.forEach((_, idx) => {
+                    const base = `${stageKey}-${idx}`;
+                    GRUPOS.forEach(g => { sT += getVal(`${base}-T-${g}`); sR += getVal(`${base}-R-${g}`); });
+                    sU += getVal(`${base}-uds`);
+                    sH += parseFloat(String(document.getElementById(`${base}-horas`)?.value || '0').replace(',', '.')) || 0;
+                });
+                resRow.push(sT, sR, sU, parseFloat(sH.toFixed(2)));
+            });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([resHeader, resRow]), 'RESUMEN');
+
+            return { wb, nombre };
         }
 
         function descargarExcel() {
             try {
-                const { wb, codigo, nombreCentro } = generarWorkbook();
-                XLSX.writeFile(wb, `Estadillo_${codigo}_${nombreCentro}.xlsx`);
+                const { wb, nombre } = generarWorkbook();
+                XLSX.writeFile(wb, `${nombre}.xlsx`);
             } catch (e) {
                 alert("Error al generar el Excel: " + e.message);
             }
@@ -1272,52 +1306,67 @@
         // =============================================
         // ENVÍO A NUBE (Google Apps Script)
         // =============================================
-        function guardarEnNube() {
+        function htmlABase64(str) {
+            const bytes = new TextEncoder().encode(str);
+            let bin = '';
+            bytes.forEach(b => bin += String.fromCharCode(b));
+            return btoa(bin);
+        }
+
+        async function guardarEnNube() {
             const btn = document.getElementById('btn-cloud');
             const originalHTML = btn.innerHTML;
-
             btn.disabled = true;
             btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Enviando...`;
             lucide.createIcons();
 
             try {
-                const { wb, codigo, nombreCentro } = generarWorkbook();
-                const filename = `Estadillo_${codigo}_${nombreCentro}.xlsx`;
-                const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+                const nombre = getNombreArchivo();
 
-                fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    redirect: 'follow',
+                // ── 1. Enviar Excel ───────────────────────────────
+                const { wb } = generarWorkbook();
+                const xlsBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+                const resXls = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST', redirect: 'follow',
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ filename: filename, base64: wbOut })
-                })
-                    .then(response => {
-                        if (response.redirected && response.url.includes('ServiceLogin')) {
-                            throw new Error("Google solicita inicio de sesión. El script NO está configurado como 'Cualquier usuario' (Anyone).");
-                        }
-                        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.status === 'success') {
-                            alert('¡ÉXITO!\n\nEl archivo se ha enviado correctamente.');
-                        } else {
-                            alert('Error del script: ' + data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error Fetch:', error);
-                        alert('ERROR DE PERMISOS O RED\n\n' + error.message + '\n\nSOLUCIÓN: Asegúrese de que la implementación del script tenga acceso configurado para "Cualquier persona" (Anyone).');
-                    })
-                    .finally(() => {
-                        btn.disabled = false;
-                        btn.innerHTML = originalHTML;
-                        lucide.createIcons();
-                    });
+                    body: JSON.stringify({ filename: `${nombre}.xlsx`, base64: xlsBase64 })
+                });
+                if (resXls.redirected && resXls.url.includes('ServiceLogin'))
+                    throw new Error("El script no está configurado como 'Cualquier persona'.");
+                if (!resXls.ok) throw new Error(`Error HTTP: ${resXls.status}`);
+                const dataXls = await resXls.json();
+                if (dataXls.status !== 'success') throw new Error('Error en script (Excel): ' + dataXls.message);
+
+                // ── 2. Enviar HTML ────────────────────────────────
+                const data = {};
+                document.querySelectorAll('input, select, textarea').forEach(el => {
+                    if (el.id) data[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+                });
+                const profs = [];
+                document.querySelectorAll('#lista-profesores [data-profesor]').forEach(card => {
+                    const ins = card.querySelectorAll('input');
+                    if (ins.length >= 3) profs.push({ nombre: ins[0].value, apellidos: ins[1].value, niveles: ins[2].value });
+                });
+                data['profesores_data'] = JSON.stringify(profs);
+                const dataScript = `<script>window.__ESTADILLO_DATA__=${JSON.stringify(data)};<\/script>`;
+                const htmlStr = document.documentElement.outerHTML.replace('</head>', dataScript + '\n</head>');
+                const htmlBase64 = htmlABase64(htmlStr);
+
+                const resHtml = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST', redirect: 'follow',
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ filename: `${nombre}.html`, base64: htmlBase64 })
+                });
+                if (!resHtml.ok) throw new Error(`Error HTTP (HTML): ${resHtml.status}`);
+                const dataHtml = await resHtml.json();
+                if (dataHtml.status !== 'success') throw new Error('Error en script (HTML): ' + dataHtml.message);
+
+                alert('✓ Enviado correctamente.\n\nSe han guardado en Drive:\n• ' + nombre + '.xlsx\n• ' + nombre + '.html');
 
             } catch (e) {
                 console.error(e);
-                alert("Error crítico interno: " + e.message);
+                alert('ERROR AL ENVIAR\n\n' + e.message);
+            } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalHTML;
                 lucide.createIcons();
